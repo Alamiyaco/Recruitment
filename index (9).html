@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة التوظيف والتيرنوفر</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #1d4ed8;
+      --border: #e5e7eb;
+      --shadow: 0 10px 25px rgba(0,0,0,0.06);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      color: #fff;
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 32px; }
+    .hero p { margin: 0; opacity: 0.95; line-height: 1.8; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .kpi-title {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .kpi-value {
+      font-size: 32px;
+      font-weight: bold;
+    }
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 20px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: right;
+    }
+    th {
+      background: #f8fafc;
+      color: #111827;
+    }
+    .note {
+      line-height: 1.9;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-block;
+      background: #eff6ff;
+      color: #1d4ed8;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      padding: 14px;
+      border-radius: 12px;
+      margin-top: 16px;
+      display: none;
+    }
+    @media (max-width: 1000px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+      .charts { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 24px; }
+      .container { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>لوحة التوظيف والتيرنوفر</h1>
+      <p>
+        هذا الموقع مناسب للرفع على GitHub Pages. التعديل يتم من خلال Google Sheet فقط، والموقع يقرأ البيانات تلقائيًا ويحوّلها إلى مؤشرات ومخططات.
+      </p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="kpi-title">عدد الشواغر المغلقة</div>
+        <div class="kpi-value" id="closedVacancies">0</div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">متوسط سرعة سد الشاغر</div>
+        <div class="kpi-value" id="avgFill">0</div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">متوسط التيرنوفر</div>
+        <div class="kpi-value" id="avgTurnover">0%</div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">عدد أشهر التيرنوفر</div>
+        <div class="kpi-value" id="monthsCount">0</div>
+      </div>
+    </section>
+
+    <section class="charts">
+      <div class="card">
+        <h3>سرعة سد الشواغر</h3>
+        <canvas id="vacancyChart"></canvas>
+      </div>
+      <div class="card">
+        <h3>اتجاه التيرنوفر الشهري</h3>
+        <canvas id="turnoverChart"></canvas>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:24px;">
+      <span class="badge">Vacancies</span>
+      <div class="table-wrap">
+        <table id="vacanciesTable">
+          <thead>
+            <tr>
+              <th>الوظيفة</th>
+              <th>القسم</th>
+              <th>تاريخ فتح الشاغر</th>
+              <th>تاريخ الإغلاق</th>
+              <th>أيام السد</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <span class="badge">تعليمات الربط</span>
+      <div class="note">
+        1) أنشئ Google Sheet فيه ورقتان بالضبط: <strong>Vacancies</strong> و <strong>Turnover</strong>.<br>
+        2) اجعل أول صف هو أسماء الأعمدة.<br>
+        3) انشر الملف على الويب من داخل Google Sheets.<br>
+        4) استبدل روابط CSV في الكود بالروابط الخاصة بك.<br>
+        5) ارفع هذا الملف على GitHub Pages وسيتحدث الموقع تلقائيًا عند تعديل الشيت.
+      </div>
+      <div id="errorBox" class="error"></div>
+    </section>
+  </div>
+
+  <script>
+    // ضع هنا روابط CSV المنشورة من Google Sheets
+    const VACANCIES_CSV_URL = 'PUT_YOUR_VACANCIES_CSV_URL_HERE';
+    const TURNOVER_CSV_URL = 'PUT_YOUR_TURNOVER_CSV_URL_HERE';
+
+    let vacancyChart;
+    let turnoverChart;
+
+    function showError(message) {
+      const box = document.getElementById('errorBox');
+      box.style.display = 'block';
+      box.textContent = message;
+    }
+
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/).filter(Boolean);
+      if (!lines.length) return [];
+      const headers = splitCSVLine(lines[0]).map(h => h.trim());
+      return lines.slice(1).map(line => {
+        const values = splitCSVLine(line);
+        const obj = {};
+        headers.forEach((header, i) => {
+          obj[header] = (values[i] || '').trim();
+        });
+        return obj;
+      });
+    }
+
+    function splitCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result.map(v => v.replace(/^"|"$/g, ''));
+    }
+
+    function daysBetween(start, end) {
+      if (!start || !end) return null;
+      const s = new Date(start);
+      const e = new Date(end);
+      if (isNaN(s) || isNaN(e)) return null;
+      const diff = Math.round((e - s) / (1000 * 60 * 60 * 24));
+      return Math.max(diff, 0);
+    }
+
+    function average(numbers) {
+      if (!numbers.length) return 0;
+      return numbers.reduce((a, b) => a + b, 0) / numbers.length;
+    }
+
+    async function fetchCSV(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('فشل في قراءة البيانات من Google Sheet');
+      const text = await res.text();
+      return parseCSV(text);
+    }
+
+    function renderVacanciesTable(rows) {
+      const tbody = document.querySelector('#vacanciesTable tbody');
+      tbody.innerHTML = '';
+      rows.forEach(row => {
+        const days = daysBetween(row.openDate, row.closeDate);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.position || '-'}</td>
+          <td>${row.department || '-'}</td>
+          <td>${row.openDate || '-'}</td>
+          <td>${row.closeDate || '-'}</td>
+          <td>${days ?? '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderKPIs(vacancies, turnover) {
+      const daysList = vacancies.map(v => daysBetween(v.openDate, v.closeDate)).filter(v => v !== null);
+      const turnoverRates = turnover.map(t => {
+        const total = Number(t.totalEmployees || 0);
+        const leavers = Number(t.leavers || 0);
+        return total > 0 ? (leavers / total) * 100 : 0;
+      });
+
+      document.getElementById('closedVacancies').textContent = daysList.length;
+      document.getElementById('avgFill').textContent = average(daysList).toFixed(1) + ' يوم';
+      document.getElementById('avgTurnover').textContent = average(turnoverRates).toFixed(2) + '%';
+      document.getElementById('monthsCount').textContent = turnover.length;
+    }
+
+    function renderCharts(vacancies, turnover) {
+      const vacancyLabels = vacancies.map(v => v.position || 'بدون اسم');
+      const vacancyData = vacancies.map(v => daysBetween(v.openDate, v.closeDate) || 0);
+
+      const turnoverLabels = turnover.map(t => t.month || '');
+      const turnoverData = turnover.map(t => {
+        const total = Number(t.totalEmployees || 0);
+        const leavers = Number(t.leavers || 0);
+        return total > 0 ? Number(((leavers / total) * 100).toFixed(2)) : 0;
+      });
+
+      if (vacancyChart) vacancyChart.destroy();
+      if (turnoverChart) turnoverChart.destroy();
+
+      vacancyChart = new Chart(document.getElementById('vacancyChart'), {
+        type: 'bar',
+        data: {
+          labels: vacancyLabels,
+          datasets: [{
+            label: 'Days to Fill',
+            data: vacancyData,
+            backgroundColor: '#2563eb',
+            borderRadius: 8
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      turnoverChart = new Chart(document.getElementById('turnoverChart'), {
+        type: 'line',
+        data: {
+          labels: turnoverLabels,
+          datasets: [{
+            label: 'Turnover %',
+            data: turnoverData,
+            borderColor: '#dc2626',
+            backgroundColor: 'rgba(220,38,38,0.12)',
+            tension: 0.35,
+            fill: true
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    async function init() {
+      try {
+        if (VACANCIES_CSV_URL.includes('PUT_YOUR') || TURNOVER_CSV_URL.includes('PUT_YOUR')) {
+          showError('لا يزال مطلوبًا وضع روابط Google Sheets CSV داخل الكود. بعد وضعها سيعمل الموقع مباشرة.');
+          return;
+        }
+
+        const [vacancyRows, turnoverRows] = await Promise.all([
+          fetchCSV(VACANCIES_CSV_URL),
+          fetchCSV(TURNOVER_CSV_URL)
+        ]);
+
+        const vacancies = vacancyRows.map(r => ({
+          position: r.position || r.Position || '',
+          department: r.department || r.Department || '',
+          openDate: r.openDate || r.OpenDate || r['Open Date'] || '',
+          closeDate: r.closeDate || r.CloseDate || r['Close Date'] || ''
+        }));
+
+        const turnover = turnoverRows.map(r => ({
+          month: r.month || r.Month || '',
+          totalEmployees: r.totalEmployees || r.TotalEmployees || r['Total Employees'] || '',
+          leavers: r.leavers || r.Leavers || ''
+        }));
+
+        renderKPIs(vacancies, turnover);
+        renderVacanciesTable(vacancies);
+        renderCharts(vacancies, turnover);
+      } catch (error) {
+        showError('حدث خطأ أثناء تحميل البيانات: ' + error.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
